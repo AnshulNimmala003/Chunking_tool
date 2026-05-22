@@ -1,0 +1,215 @@
+<div class="upload-page">
+
+  <div class="upload-header">
+    <div class="logo">
+      <span class="logo-icon">⬡</span>
+      <span class="logo-text">HITL Chunking</span>
+    </div>
+    <p class="tagline">AI & Human-driven document segmentation for RAG pipelines</p>
+  </div>
+
+  <!-- ── Tab selector ──────────────────────────────────────────────────── -->
+  <div class="tab-group">
+    <button class="tab-btn" [class.active]="activeTab === 'document'" (click)="selectTab('document')">
+      <span class="tab-icon">📄</span>
+      <span>Document</span>
+      <small>Image · PDF</small>
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'media'" (click)="selectTab('media')">
+      <span class="tab-icon">🎙</span>
+      <span>Audio / Video</span>
+      <small>MP3 · MP4 · WAV</small>
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'webpage'" (click)="selectTab('webpage')">
+      <span class="tab-icon">🌐</span>
+      <span>Webpage</span>
+      <small>Any public URL</small>
+    </button>
+  </div>
+
+  <!-- ── Processing overlay ────────────────────────────────────────────── -->
+  <div *ngIf="isProcessing || isFetchingUrl" class="preview-overlay">
+    <div class="preview-spinner"></div>
+    <p class="preview-msg" *ngIf="activeTab === 'document'">Rendering PDF pages — please wait…</p>
+    <p class="preview-msg" *ngIf="activeTab === 'media'">Transcribing & chunking media — this may take a minute…</p>
+    <p class="preview-msg" *ngIf="activeTab === 'webpage'">Capturing webpage and running Gemini analysis…</p>
+  </div>
+
+  <!-- ── Error banner ──────────────────────────────────────────────────── -->
+  <div *ngIf="processError" class="preview-error">
+    ⚠ {{ processError }}
+    <button class="dismiss-btn" (click)="processError = ''">Dismiss</button>
+  </div>
+  <div *ngIf="urlError" class="preview-error">
+    ⚠ {{ urlError }}
+    <button class="dismiss-btn" (click)="urlError = ''">Dismiss</button>
+  </div>
+
+  <!-- ══ DOCUMENT TAB ══════════════════════════════════════════════════ -->
+  <ng-container *ngIf="activeTab === 'document'">
+    <div
+      class="drop-zone"
+      [class.dragging]="isDragging"
+      [class.disabled]="isProcessing"
+      (dragover)="onDragOver($event)"
+      (dragleave)="onDragLeave()"
+      (drop)="onDrop($event)"
+    >
+      <div class="drop-icon">
+        <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M16 8l-4-4-4 4M12 4v12"/>
+        </svg>
+      </div>
+      <p class="drop-title">Drop a document here</p>
+      <p class="drop-sub">JPEG · PNG · WEBP · GIF · <strong>PDF</strong> &nbsp;|&nbsp; Max 50 MB</p>
+      <label class="browse-btn" [class.disabled]="isProcessing">
+        Browse file
+        <input type="file" accept="image/*,application/pdf" (change)="onFileSelect($event)" hidden [disabled]="isProcessing" />
+      </label>
+    </div>
+
+    <div class="use-cases">
+      <span>Works best with:</span>
+      <span class="tag">Dashboards</span>
+      <span class="tag">Infographics</span>
+      <span class="tag">Pharma reports</span>
+      <span class="tag">Data tables</span>
+      <span class="tag">Slide exports</span>
+      <span class="tag">Multi-page PDFs</span>
+    </div>
+  </ng-container>
+
+  <!-- ══ AUDIO / VIDEO TAB ════════════════════════════════════════════ -->
+  <ng-container *ngIf="activeTab === 'media'">
+    <div
+      class="drop-zone"
+      [class.dragging]="isDragging"
+      [class.disabled]="isProcessing"
+      (dragover)="onDragOver($event)"
+      (dragleave)="onDragLeave()"
+      (drop)="onDrop($event)"
+    >
+      <div class="drop-icon media-icon">
+        <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M9 19V6l12-3v13"/>
+          <circle cx="6" cy="19" r="3"/><circle cx="18" cy="16" r="3"/>
+        </svg>
+      </div>
+      <p class="drop-title">Drop an audio or video file</p>
+      <p class="drop-sub">Audio: MP3 · WAV · M4A · OGG · FLAC<br>Video: MP4 · MOV · WEBM · AVI &nbsp;|&nbsp; Max 200 MB</p>
+      <label class="browse-btn media-btn" [class.disabled]="isProcessing">
+        Browse file
+        <input
+          type="file"
+          accept="audio/*,video/*,.mp3,.wav,.m4a,.ogg,.flac,.mp4,.mov,.webm,.avi"
+          (change)="onFileSelect($event)"
+          hidden
+          [disabled]="isProcessing"
+        />
+      </label>
+    </div>
+
+    <div class="feature-list">
+      <div class="feature-item">
+        <span class="feature-icon">🎯</span>
+        <span>Auto-transcribed with Groq Whisper (whisper-large-v3)</span>
+      </div>
+      <div class="feature-item">
+        <span class="feature-icon">⬡</span>
+        <span>Semantic chunking via Gemini — groups by topic, not just time</span>
+      </div>
+      <div class="feature-item">
+        <span class="feature-icon">🎞</span>
+        <span>Video: key frames extracted and associated with each chunk</span>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- ══ WEBPAGE TAB ══════════════════════════════════════════════════ -->
+  <ng-container *ngIf="activeTab === 'webpage'">
+    <div class="webpage-panel">
+
+      <!-- Method toggle -->
+      <div class="method-toggle">
+        <button
+          class="method-btn"
+          [class.active]="webpageMethod === 'rule'"
+          (click)="webpageMethod = 'rule'"
+        >
+          <span class="method-icon">⚡</span>
+          <div>
+            <div class="method-label">Rule-based</div>
+            <div class="method-sub">No AI · DOM structure · Fast</div>
+          </div>
+        </button>
+        <button
+          class="method-btn"
+          [class.active]="webpageMethod === 'ai'"
+          (click)="webpageMethod = 'ai'"
+        >
+          <span class="method-icon">⬡</span>
+          <div>
+            <div class="method-label">AI-powered</div>
+            <div class="method-sub">Gemini · Visual layout · Accurate</div>
+          </div>
+        </button>
+      </div>
+
+      <div class="url-input-group">
+        <input
+          class="url-input"
+          type="url"
+          placeholder="https://example.com/report"
+          [(ngModel)]="urlInput"
+          (keydown)="onUrlKeydown($event)"
+          [disabled]="isFetchingUrl"
+          autofocus
+        />
+        <button
+          class="browse-btn fetch-btn"
+          [disabled]="isFetchingUrl || !urlInput.trim()"
+          (click)="fetchWebpage()"
+        >
+          {{ isFetchingUrl ? 'Capturing…' : 'Capture & Chunk' }}
+        </button>
+      </div>
+
+      <p class="url-hint" *ngIf="webpageMethod === 'rule'">
+        Chromium screenshots the page and extracts chunks from semantic HTML elements (headings, paragraphs, tables, figures) — no API quota used.
+      </p>
+      <p class="url-hint" *ngIf="webpageMethod === 'ai'">
+        Chromium screenshots the page, then Gemini identifies visual content regions. Uses API quota. Works best with public pages.
+      </p>
+    </div>
+
+    <div class="feature-list" *ngIf="webpageMethod === 'rule'">
+      <div class="feature-item">
+        <span class="feature-icon">⚡</span>
+        <span>No LLM — chunks extracted directly from DOM (h1–h6, p, table, figure, ul/ol)</span>
+      </div>
+      <div class="feature-item">
+        <span class="feature-icon">✍</span>
+        <span>Text populated automatically from element innerText — no OCR needed</span>
+      </div>
+      <div class="feature-item">
+        <span class="feature-icon">✂</span>
+        <span>Same canvas editor — move, resize, delete, or add boxes manually</span>
+      </div>
+    </div>
+    <div class="feature-list" *ngIf="webpageMethod === 'ai'">
+      <div class="feature-item">
+        <span class="feature-icon">📸</span>
+        <span>Full-page screenshot at 1440 × native height, 1.5× retina</span>
+      </div>
+      <div class="feature-item">
+        <span class="feature-icon">⬡</span>
+        <span>Gemini visual layout analysis — detects sections, charts, tables</span>
+      </div>
+      <div class="feature-item">
+        <span class="feature-icon">✂</span>
+        <span>Same canvas editor as documents — move, resize, annotate chunks</span>
+      </div>
+    </div>
+  </ng-container>
+
+</div>

@@ -1,0 +1,85 @@
+<div class="transcript-shell">
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <button class="btn-icon" title="Back to upload" (click)="reset()">&#8592; New</button>
+      <span class="media-label">
+        <span class="media-badge" [class.audio]="state.mediaType() === 'audio'" [class.video]="state.mediaType() === 'video'">
+          {{ state.mediaType() === 'audio' ? 'AUDIO' : 'VIDEO' }}
+        </span>
+        <span class="duration" *ngIf="state.mediaDuration()">
+          {{ formatTime(state.mediaDuration()) }}
+        </span>
+      </span>
+    </div>
+    <div class="toolbar-center">
+      <button class="btn-icon" [disabled]="!canUndo" (click)="undo()" title="Undo">&#8617;</button>
+      <button class="btn-icon" [disabled]="!canRedo" (click)="redo()" title="Redo">&#8618;</button>
+      <button class="btn-icon" (click)="showFullTranscript = !showFullTranscript" title="Toggle full transcript">
+        {{ showFullTranscript ? 'Hide Transcript' : 'Show Transcript' }}
+      </button>
+    </div>
+    <div class="toolbar-right">
+      <span *ngIf="exportError" class="error-msg">{{ exportError }}</span>
+      <button
+        class="btn-export"
+        [disabled]="state.isExporting() || !state.chunks().length"
+        (click)="exportChunks()"
+      >
+        {{ state.isExporting() ? 'Exporting…' : 'Export ZIP' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Full transcript panel -->
+  <div class="full-transcript" *ngIf="showFullTranscript && state.fullTranscript()">
+    <div class="transcript-header">Full Transcript</div>
+    <pre class="transcript-text">{{ state.fullTranscript() }}</pre>
+  </div>
+
+  <!-- Chunk list -->
+  <div class="chunk-list">
+    <div
+      *ngFor="let chunk of state.chunks(); trackBy: trackByChunkId; let i = index"
+      class="chunk-card"
+      [class.selected]="state.selectedChunkId() === chunk.id"
+      (click)="selectChunk(chunk.id)"
+    >
+      <!-- Time badge -->
+      <div class="chunk-time">
+        <span class="time-range">{{ formatTime(chunk.startTime) }} – {{ formatTime(chunk.endTime) }}</span>
+        <span class="chunk-index">#{{ i + 1 }}</span>
+      </div>
+
+      <!-- Editable fields -->
+      <div class="chunk-fields" (click)="$event.stopPropagation()">
+        <input
+          class="chunk-title-input"
+          [value]="chunk.title"
+          (change)="updateTitle(chunk, $any($event.target).value)"
+          placeholder="Chunk title"
+        />
+        <textarea
+          class="chunk-desc-input"
+          [value]="chunk.description"
+          (change)="updateDescription(chunk, $any($event.target).value)"
+          placeholder="Transcript text…"
+          rows="4"
+        ></textarea>
+      </div>
+
+      <!-- Actions -->
+      <div class="chunk-actions" (click)="$event.stopPropagation()">
+        <button class="btn-sm" (click)="splitChunk(chunk.id)" title="Split at midpoint">Split</button>
+        <button class="btn-sm" [disabled]="isLastChunk(chunk)" (click)="mergeWithNext(chunk.id)" title="Merge with next chunk">Merge ↓</button>
+        <button class="btn-sm btn-danger" (click)="removeChunk(chunk.id)" title="Delete chunk">Delete</button>
+      </div>
+    </div>
+
+    <div *ngIf="!state.chunks().length" class="empty-state">
+      No transcript chunks available.
+    </div>
+  </div>
+
+</div>

@@ -1,0 +1,38 @@
+<div class="upload-page">
+  <div class="upload-header">
+    <div class="logo">
+      <span class="logo-icon">⬡</span>
+      <span class="logo-text">HITL Chunking</span>
+    </div>
+    <p class="tagline">Gemini-assisted visual chunking for RAG pipelines</p>
+  </div>
+
+  <div
+    class="drop-zone"
+    [class.dragging]="isDragging"
+    (dragover)="onDragOver($event)"
+    (dragleave)="onDragLeave()"
+    (drop)="onDrop($event)"
+  >
+    <div class="drop-icon">
+      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M16 8l-4-4-4 4M12 4v12"/>
+      </svg>
+    </div>
+    <p class="drop-title">Drop your document or image here</p>
+    <p class="drop-sub">PDF · DOCX · PNG · JPEG &nbsp;|&nbsp; Max 20 MB</p>
+    <label class="browse-btn">
+      Browse file
+      <input type="file" accept="image/*,.pdf,.docx,.doc" (change)="onFileSelect($event)" hidden />
+    </label>
+  </div>
+
+  <div class="use-cases">
+    <span>Works best with:</span>
+    <span class="tag">Dashboards</span>
+    <span class="tag">Infographics</span>
+    <span class="tag">Pharma reports</span>
+    <span class="tag">Data tables</span>
+    <span class="tag">Slide exports</span>
+  </div>
+</div>

@@ -1,0 +1,174 @@
+<!-- ── Toolbar ──────────────────────────────────────────────────────────── -->
+<div class="toolbar">
+  <div class="toolbar-left">
+    <button
+      class="btn btn-primary"
+      [disabled]="state.isAnalyzing()"
+      (click)="analyze()"
+      title="Send image to Gemini for layout analysis"
+    >
+      <span *ngIf="!state.isAnalyzing()">⬡ Analyze with Gemini</span>
+      <span *ngIf="state.isAnalyzing()" class="loading-text">
+        <span class="spinner"></span> Analyzing layout with AI...
+      </span>
+    </button>
+
+    <button
+      class="btn btn-secondary"
+      [class.active]="state.isAddMode()"
+      [disabled]="state.isAnalyzing()"
+      (click)="state.toggleAddMode()"
+      title="Click then drag on canvas to add a new box"
+    >
+      {{ state.isAddMode() ? '✕ Cancel Add' : '+ Add Box' }}
+    </button>
+
+    <div *ngIf="state.chunks().length" class="chunk-counter">
+      {{ state.chunks().length }} chunk{{ state.chunks().length !== 1 ? 's' : '' }}
+    </div>
+  </div>
+
+  <div class="toolbar-right">
+    <button
+      class="btn btn-outline"
+      (click)="state.reset()"
+      title="Upload a different image"
+    >
+      ← New Image
+    </button>
+
+    <button
+      class="btn btn-success"
+      [disabled]="state.isExporting() || !state.chunks().length || !state.hasSession()"
+      (click)="exportChunks()"
+      title="Crop chunks and download as ZIP + JSON"
+    >
+      <span *ngIf="!state.isExporting()">⬇ Finalize & Export</span>
+      <span *ngIf="state.isExporting()">
+        <span class="spinner"></span> Exporting...
+      </span>
+    </button>
+  </div>
+</div>
+
+<!-- ── Error banners ────────────────────────────────────────────────────── -->
+<div *ngIf="analyzeError" class="error-banner">
+  ⚠ Analyze failed: {{ analyzeError }}
+</div>
+<div *ngIf="exportError" class="error-banner">
+  ⚠ Export failed: {{ exportError }}
+</div>
+
+<!-- ── Add-mode hint ─────────────────────────────────────────────────────── -->
+<div *ngIf="state.isAddMode()" class="add-mode-hint">
+  Click and drag on the image to draw a new bounding box
+</div>
+
+<!-- ── Legend ─────────────────────────────────────────────────────────────── -->
+<div class="legend">
+  <span class="legend-item">
+    <span class="swatch ai"></span> AI-generated
+  </span>
+  <span class="legend-item">
+    <span class="swatch user"></span> User-modified / added
+  </span>
+</div>
+
+<!-- ── Main split panel ──────────────────────────────────────────────────── -->
+<div class="editor-body">
+
+  <!-- Canvas area -->
+  <div class="canvas-area">
+    <div #canvasContainer class="canvas-container">
+      <canvas #fabricCanvas></canvas>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+
+    <!-- Chunk list -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">Chunks ({{ state.chunks().length }})</div>
+
+      <div *ngIf="!state.chunks().length" class="empty-state">
+        Run "Analyze with Gemini" or draw boxes manually
+      </div>
+
+      <div class="chunk-list">
+        <div
+          *ngFor="let chunk of state.chunks(); trackBy: trackByChunkId"
+          class="chunk-item"
+          [class.selected]="state.selectedChunkId() === chunk.id"
+          (click)="selectChunk(chunk.id)"
+        >
+          <div class="chunk-thumb">
+            <img *ngIf="chunk.thumbnail" [src]="chunk.thumbnail" alt="Chunk preview" />
+            <div *ngIf="!chunk.thumbnail" class="thumb-placeholder">
+              <span>{{ chunk.label[0] }}</span>
+            </div>
+          </div>
+          <div class="chunk-info">
+            <div class="chunk-label">
+              <span class="source-dot" [class.ai]="chunk.source === 'ai'" [class.user]="chunk.source !== 'ai'"></span>
+              {{ chunk.title || chunk.label }}
+            </div>
+            <div class="chunk-type-badge">{{ chunk.type }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Metadata editor -->
+    <div *ngIf="state.selectedChunk() as chunk" class="sidebar-section metadata-editor">
+      <div class="sidebar-title">Edit Chunk Metadata</div>
+
+      <div class="field">
+        <label>Title</label>
+        <input
+          type="text"
+          [value]="chunk.title"
+          (input)="state.updateChunk(chunk.id, { title: $any($event.target).value })"
+          placeholder="e.g. Q3 Sales Chart"
+        />
+      </div>
+
+      <div class="field">
+        <label>Description</label>
+        <textarea
+          [value]="chunk.description"
+          (input)="state.updateChunk(chunk.id, { description: $any($event.target).value })"
+          rows="3"
+          placeholder="Describe what this chunk represents for RAG retrieval"
+        ></textarea>
+      </div>
+
+      <div class="field">
+        <label>Type</label>
+        <select
+          [value]="chunk.type"
+          (change)="state.updateChunk(chunk.id, { type: $any($event.target).value })"
+        >
+          <option *ngFor="let t of chunkTypes" [value]="t">{{ t }}</option>
+        </select>
+      </div>
+
+      <div class="field coord-display">
+        <label>Coordinates (normalized)</label>
+        <code>
+          [{{ chunk.box[0].toFixed(3) }},&nbsp;{{ chunk.box[1].toFixed(3) }},&nbsp;{{ chunk.box[2].toFixed(3) }},&nbsp;{{ chunk.box[3].toFixed(3) }}]
+        </code>
+      </div>
+
+      <div class="field">
+        <label>AI Summary</label>
+        <p class="summary-text">{{ chunk.summary || '—' }}</p>
+      </div>
+    </div>
+
+    <div *ngIf="!state.selectedChunk() && state.chunks().length" class="sidebar-section">
+      <p class="select-hint">Click a chunk in the list or on the canvas to edit its metadata.</p>
+    </div>
+
+  </div>
+</div>

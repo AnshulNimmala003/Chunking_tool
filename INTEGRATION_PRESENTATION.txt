@@ -1,0 +1,195 @@
+HITL CHUNKING → ADMIN CONSOLE INTEGRATION
+Team Presentation Script
+========================================
+
+
+SLIDE 1 — THE PROBLEM WE'RE SOLVING
+-------------------------------------
+Right now, when we add a PDF to the Admin Console, the AI treats the whole
+document as one block. It has no understanding of where information lives —
+which section, which page, which visual element. When the chatbot retrieves
+something, it pulls from the full file, which makes answers imprecise and
+hard to trace back to a source.
+
+What we want is for every file to be broken into meaningful pieces — a section
+of body text, a chart, a table — each with its own label, its own page and
+paragraph reference, and its own image snapshot. That way the AI retrieves the
+right chunk and can show the user exactly where it came from.
+
+
+SLIDE 2 — WHAT WE BUILT: THE HITL CHUNKING TOOL
+-------------------------------------------------
+We built a tool that solves exactly this. It is called HITL — Human In The
+Loop — Chunking. Here is how it works:
+
+  1. Upload a PDF — the tool renders it at high resolution on a canvas
+  2. Analyze — click one button and the AI (GPT-4o or Gemini) automatically
+     draws bounding boxes around every meaningful section: body text, charts,
+     tables, headers
+  3. Review — you see every box on the canvas with a label, type, and a
+     preview of the extracted text
+  4. Edit — drag to resize boxes, add new ones manually, delete wrong ones,
+     edit titles and text
+  5. Export — every chunk is exported as a JPEG image and a text file, both
+     named consistently, bundled in a ZIP with a metadata JSON
+
+Crucially, every chunk knows its location: page number, paragraph number, and
+where on the page it sits — top-left, center, bottom-right, and so on.
+
+
+SLIDE 3 — WHERE IT FITS IN THE ADMIN CONSOLE
+---------------------------------------------
+The Admin Console already has everything we need. Here is the current file
+lifecycle:
+
+  TODAY:
+  Upload PDF → Non Vectorized → [manual] Sync AI → Vectorized
+                                         ^
+                              Whole document sent to AI as-is
+
+  AFTER INTEGRATION:
+  Upload PDF → Non Vectorized → [new] Chunk → chunks saved as images
+                                                       |
+                                         Sync AI → Vectorized
+                                         ^
+                              Each chunk sent individually with full metadata
+
+The "Zoomed-In Images" section already exists in the Add New File form and in
+the database. Chunks from the HITL tool map directly into those image records —
+the title, the description, the image type, the page reference, the location.
+Nothing new needs to be stored.
+
+
+SLIDE 4 — THE INTEGRATION APPROACH
+------------------------------------
+Here is the approach we are recommending, and the reason we like it:
+ZERO BACKEND CHANGES.
+
+How it works in three steps:
+
+  STEP 1 — A new button on every file row
+  We add a single "Chunk" button next to each file in the File Management
+  table. One button, one method added to the component.
+
+  STEP 2 — Opens the HITL tool pre-loaded
+  Clicking it opens the HITL tool in a new tab with the file already loaded
+  from S3. No re-uploading. The file ID and the user's auth token are passed
+  as URL parameters so the tool knows where to send the results.
+
+  STEP 3 — Saves directly to the existing images API
+  When the user finishes chunking and clicks "Save Chunks to Console", each
+  chunk JPEG and its metadata is sent to the endpoint that already exists:
+  POST /api/file-urls/{id}/images — the same endpoint the "Zoomed-In Images"
+  uploader uses today. The chunks appear in the file record immediately.
+
+
+SLIDE 5 — WHAT CHANGES, WHAT DOESN'T
+---------------------------------------
+  Admin Console backend (Hapi.js)       — NO CHANGES
+  Admin Console database schema         — NO CHANGES
+  Admin Console vectorization flow      — NO CHANGES
+  HITL tool standalone mode             — NO CHANGES
+  HITL tool ZIP export                  — NO CHANGES
+
+  Admin Console frontend  — one button + one method in File Management table
+  HITL tool frontend      — URL param detection + new "Save to Console" path
+
+The surface area of this change is deliberately small. Both tools keep working
+independently. The integration is purely additive.
+
+
+SLIDE 6 — DATA FLOW
+---------------------
+  Admin Console                         HITL Tool
+  ─────────────                         ─────────────────────────────
+  File Management table
+    [Chunk] clicked
+          |
+          |  Opens new tab:
+          |    localhost:4201
+          |      ?fileId=123
+          |      &s3Url=https://s3.../file.pdf
+          |      &token=eyJ...
+          |      &apiBase=https://api.../
+          |                                  → Detects URL params
+          |                                  → Fetches PDF from S3
+          |                                  → Renders on canvas
+          |                                  → User analyzes + edits
+          |                                  → "Save Chunks to Console"
+          |                                        |
+          |                                        |  POST /api/file-urls/123/images
+          |◄───────────────────────────────────────┘  (one call per chunk)
+          |
+    Chunks appear as
+    Zoomed-In Images on the file record
+          |
+    [Sync AI] clicked
+          |
+    File vectorized ✓
+
+
+SLIDE 7 — IMPLEMENTATION ESTIMATE
+------------------------------------
+  Add "Chunk" button to file management table          ~1 hour
+  openChunker() method in file management component    ~1 hour
+  URL param detection in HITL tool                     ~2 hours
+  saveChunkToConsole() API method in HITL tool         ~2 hours
+  "Save to Console" button + progress in HITL tool     ~2 hours
+  End-to-end testing                                   ~3 hours
+  ─────────────────────────────────────────────────────────────
+  TOTAL                                                ~1.5 days
+
+
+SLIDE 8 — WHAT THIS ENABLES FOR THE CHATBOT
+---------------------------------------------
+Once a file is chunked and vectorized at the chunk level, the chatbot can:
+
+  - Retrieve precisely — instead of searching a 40-page PDF, it finds the one
+    paragraph or chart that answers the question
+  - Show source context — it can tell the user exactly which page, paragraph,
+    and position the answer came from
+  - Handle visual content — charts, tables, diagrams are stored as images with
+    descriptions, so the AI can reason about them
+  - Respect structure — body text, headers, tables, and charts are tagged by
+    type so retrieval can filter by content category
+
+
+SLIDE 9 — NEXT STEPS
+----------------------
+  1. Confirm deployment setup — where will the HITL tool be hosted in
+     production? Same domain as admin console or separate subdomain?
+  2. S3 access — do we need pre-signed URLs for the HITL tool to fetch the
+     PDF, or are the S3 URLs already public?
+  3. Start build — estimated 1.5 days to complete the integration
+  4. Test on 2-3 real PDFs — YONSA PI, a support resource guide, a form
+  5. Demo to stakeholders — show the full flow: upload → chunk → sync →
+     chatbot retrieval
+
+
+ANTICIPATED QUESTIONS
+-----------------------
+Q: Does this replace the existing Zoomed-In Images upload?
+A: No. It is an additional path. Users can still upload images manually.
+   Chunking is offered as a smarter, faster alternative for PDF files.
+
+Q: What happens if the AI draws the wrong boxes?
+A: That is the "human in the loop" part. Every box is reviewable and editable
+   before saving. The user can resize, delete, or add boxes manually.
+
+Q: Can we run this on all existing files in the file table?
+A: Yes — the Chunk button will be available on every file row including
+   existing ones.
+
+Q: Does this slow down vectorization?
+A: No. Chunking is a separate step before Sync AI. Sync AI still works the
+   same way; it just now has richer image data attached to the file.
+
+Q: What about Word docs and other formats?
+A: Currently the HITL tool works with PDFs and images. Word docs would need
+   to be saved as PDF first.
+
+
+========================================
+Prepared: 2026-05-08
+HITL Chunking Tool — ~/Desktop/human in loop chunkng/
+Admin Console — chatbotadminconsole-test.ypointsolutions.com

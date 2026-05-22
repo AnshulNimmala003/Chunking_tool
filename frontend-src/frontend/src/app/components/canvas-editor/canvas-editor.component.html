@@ -1,0 +1,301 @@
+<!-- ── Toolbar ──────────────────────────────────────────────────────────── -->
+<div class="toolbar">
+  <div class="toolbar-left">
+    <button
+      class="btn btn-primary"
+      [disabled]="state.isAnalyzing()"
+      (click)="analyze()"
+      title="Send image to Gemini for layout analysis"
+    >
+      <span *ngIf="!state.isAnalyzing()">⬡ Analyze</span>
+      <span *ngIf="state.isAnalyzing()" class="loading-text">
+        <span class="spinner"></span> Analyzing layout...
+      </span>
+    </button>
+
+    <button
+      class="btn btn-secondary"
+      [class.active]="state.isAddMode()"
+      [disabled]="state.isAnalyzing()"
+      (click)="state.toggleAddMode()"
+      title="Draw boxes (shortcut: B) · Esc or right-click to cancel mid-draw"
+    >
+      {{ state.isAddMode() ? '✕ Cancel' : '+ Add Box' }}
+    </button>
+
+    <button
+      class="btn btn-secondary"
+      [disabled]="!state.selectedChunk()"
+      (click)="duplicateSelected()"
+      title="Duplicate the selected chunk"
+    >
+      ⧉ Duplicate
+    </button>
+
+    <!-- Undo / Redo -->
+    <div class="undo-group">
+      <button
+        class="btn btn-icon"
+        [disabled]="!canUndo"
+        (click)="undo()"
+        title="Undo (Ctrl+Z)"
+      >↩</button>
+      <button
+        class="btn btn-icon"
+        [disabled]="!canRedo"
+        (click)="redo()"
+        title="Redo (Ctrl+Shift+Z)"
+      >↪</button>
+    </div>
+
+    <div *ngIf="state.chunks().length" class="chunk-counter">
+      {{ state.chunks().length }} chunk{{ state.chunks().length !== 1 ? 's' : '' }}
+    </div>
+  </div>
+
+  <div class="toolbar-right">
+    <div class="zoom-group" title="Scroll to zoom · drag to pan">
+      <button class="btn btn-icon" (click)="zoomOut()" title="Zoom out">−</button>
+      <span class="zoom-label">{{ zoomPercent }}</span>
+      <button class="btn btn-icon" (click)="zoomIn()"  title="Zoom in">+</button>
+      <button class="btn btn-icon" (click)="resetZoom()" title="Fit page in view (F)">⤢</button>
+      <button class="btn btn-icon" (click)="fitWidth()" title="Fit to width">↔</button>
+    </div>
+
+    <button
+      class="btn btn-outline"
+      (click)="state.reset()"
+      title="Upload a different file"
+    >
+      ← New File
+    </button>
+
+    <button
+      class="btn btn-success"
+      [disabled]="state.isExporting() || !state.chunks().length"
+      (click)="exportChunks()"
+      title="Export all chunks from all pages as ZIP"
+    >
+      <span *ngIf="!state.isExporting()">⬇ Finalize & Export</span>
+      <span *ngIf="state.isExporting()" class="loading-text">
+        <span class="spinner"></span> Exporting...
+      </span>
+    </button>
+  </div>
+</div>
+
+<!-- ── Error banners ────────────────────────────────────────────────────── -->
+<div *ngIf="analyzeError" class="error-banner">
+  ⚠ {{ analyzeError }}
+</div>
+<div *ngIf="exportError" class="error-banner">
+  ⚠ Export failed: {{ exportError }}
+</div>
+
+<!-- ── Mode hints ────────────────────────────────────────────────────────── -->
+<div *ngIf="state.isAddMode()" class="hint-bar draw-hint">
+  ✏ Draw mode — drag to draw boxes · right-click or Esc to cancel · press B or "✕ Cancel" to exit
+</div>
+<div *ngIf="!state.isAddMode() && !analyzeError && state.chunks().length === 0 && !state.isAnalyzing()" class="hint-bar pan-hint">
+  Tip: scroll to zoom · drag to pan · F = fit page · B = start drawing boxes · Ctrl+Z = undo
+</div>
+
+<!-- ── Legend ─────────────────────────────────────────────────────────────── -->
+<div class="legend">
+  <span class="legend-item"><span class="swatch ai"></span> AI-generated</span>
+  <span class="legend-item"><span class="swatch user"></span> User-added</span>
+  <span class="legend-sep">|</span>
+  <span class="legend-tip">Scroll = zoom · drag = pan · F = fit · B = draw · Ctrl+Z = undo · click sidebar = zoom to chunk</span>
+</div>
+
+<!-- ── Main split panel ──────────────────────────────────────────────────── -->
+<div class="editor-body">
+
+  <div class="canvas-column">
+    <div class="canvas-area">
+      <!-- PDF converting placeholder -->
+      <div *ngIf="state.imageFile()?.type === 'application/pdf' && !state.imageUrl()" class="pdf-placeholder">
+        <div class="pdf-icon">📄</div>
+        <p class="pdf-name">{{ state.imageFile()?.name }}</p>
+        <p class="pdf-hint">
+          <span class="spinner spinner-dark"></span>
+          Converting PDF — please wait...
+        </p>
+      </div>
+
+      <div #canvasContainer class="canvas-container"
+           [style.display]="state.imageUrl() ? 'block' : 'none'">
+        <canvas #fabricCanvas></canvas>
+      </div>
+    </div>
+
+    <!-- Page strip (multi-page PDFs only) -->
+    <div *ngIf="state.pdfPages().length > 1" class="page-strip">
+      <div class="page-strip-label">
+        Page {{ state.currentPage() }} / {{ state.pdfPages().length }}
+      </div>
+      <div class="page-strip-scroll">
+        <button
+          *ngFor="let p of state.pdfPages()"
+          class="page-thumb-btn"
+          [class.active]="state.currentPage() === p.page"
+          (click)="goToPage(p)"
+          [title]="'Page ' + p.page"
+        >
+          <img [src]="p.imageUrl" [alt]="'Page ' + p.page" crossorigin="anonymous" />
+          <span class="page-num">{{ p.page }}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+
+    <!-- Chunk list -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">
+        Chunks ({{ state.chunks().length }})
+        <span *ngIf="state.pdfPages().length > 1" class="page-badge">Page {{ state.currentPage() }}</span>
+      </div>
+
+      <div *ngIf="!state.chunks().length" class="empty-state">
+        Run "Analyze with Gemini" or draw boxes manually
+      </div>
+
+      <div class="chunk-list">
+        <div
+          *ngFor="let chunk of state.chunks(); trackBy: trackByChunkId"
+          class="chunk-item"
+          [class.selected]="state.selectedChunkId() === chunk.id"
+          (click)="selectAndZoom(chunk.id)"
+          title="Click to zoom canvas to this chunk"
+        >
+          <div class="chunk-thumb">
+            <img *ngIf="chunk.thumbnail" [src]="chunk.thumbnail" alt="Chunk preview" />
+            <div *ngIf="!chunk.thumbnail" class="thumb-placeholder">
+              <span>{{ chunk.label ? chunk.label[0] : '?' }}</span>
+            </div>
+          </div>
+          <div class="chunk-info">
+            <div class="chunk-label">
+              <span class="source-dot" [class.ai]="chunk.source === 'ai'" [class.user]="chunk.source !== 'ai'"></span>
+              {{ chunk.title || chunk.label }}
+            </div>
+            <div class="chunk-type-badge">{{ chunk.type }}</div>
+            <div class="chunk-location-row">
+              <span class="loc-pill loc-page">Pg {{ chunk.pageNumber }}</span>
+              <span *ngIf="chunk.paragraphNumber" class="loc-pill loc-para">¶ {{ chunk.paragraphNumber }}</span>
+              <span *ngIf="chunk.locationInPage" class="loc-pill loc-zone">{{ chunk.locationInPage }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Metadata editor -->
+    <div *ngIf="state.selectedChunk() as chunk" class="sidebar-section metadata-editor">
+      <div class="sidebar-title">Edit Chunk Metadata</div>
+
+      <div class="field">
+        <label>Title</label>
+        <input
+          type="text"
+          [value]="chunk.title"
+          (input)="state.updateChunk(chunk.id, { title: $any($event.target).value })"
+          placeholder="e.g. Q3 Sales Chart"
+        />
+      </div>
+
+      <div class="field">
+        <label>Filename <span class="label-hint">(no extension — used for .txt and .jpeg export)</span></label>
+        <input
+          type="text"
+          [value]="chunk.filename || ''"
+          (input)="state.updateChunk(chunk.id, { filename: $any($event.target).value })"
+          placeholder="e.g. q3-sales-chart"
+        />
+      </div>
+
+      <div class="field">
+        <label>
+          Extracted Text
+          <span *ngIf="!chunk.description && state.pdfPath()" class="label-hint">(auto-filled from PDF)</span>
+          <span *ngIf="!state.pdfPath()" class="label-hint">(type manually — image files have no text layer)</span>
+          <button *ngIf="state.pdfPath()" class="btn-reextract" (click)="reExtractText(chunk.id)" title="Re-extract text from PDF">↺ Re-extract</button>
+        </label>
+        <textarea
+          [value]="chunk.description"
+          (input)="state.updateChunk(chunk.id, { description: $any($event.target).value })"
+          rows="5"
+          placeholder="Text extracted from PDF region — edit freely"
+        ></textarea>
+        <div *ngIf="noTextLayerWarning && !chunk.description" class="no-text-layer-hint">
+          ⚠ This PDF page has no selectable text layer (likely a scanned image). Type the content manually.
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Type</label>
+        <select
+          [value]="chunk.type"
+          (change)="state.updateChunk(chunk.id, { type: $any($event.target).value })"
+        >
+          <option *ngFor="let t of chunkTypes" [value]="t">{{ t }}</option>
+        </select>
+      </div>
+
+      <div class="field location-display">
+        <label>Location</label>
+        <div class="location-pills">
+          <div class="location-item">
+            <span class="location-key">Page</span>
+            <span class="location-val">{{ chunk.pageNumber }}</span>
+          </div>
+          <div class="location-item" *ngIf="chunk.paragraphNumber">
+            <span class="location-key">Paragraph</span>
+            <span class="location-val">{{ chunk.paragraphNumber }}</span>
+          </div>
+          <div class="location-item" *ngIf="chunk.locationInPage">
+            <span class="location-key">Position</span>
+            <span class="location-val">{{ chunk.locationInPage }}</span>
+          </div>
+        </div>
+        <code class="coord-code">
+          [{{ chunk.box[0].toFixed(3) }},&nbsp;{{ chunk.box[1].toFixed(3) }},&nbsp;{{ chunk.box[2].toFixed(3) }},&nbsp;{{ chunk.box[3].toFixed(3) }}]
+        </code>
+      </div>
+
+      <div class="field questions-field">
+        <label class="field-label questions-label">
+          <span>Possible Questions</span>
+          <button
+            class="btn-reextract"
+            [disabled]="questionsLoading() || !chunk.description.trim()"
+            (click)="generateQuestionsForSelected()"
+            title="Generate questions from extracted text"
+          >{{ questionsLoading() ? '…' : '↺ Generate' }}</button>
+        </label>
+        <p *ngIf="questionsError()" class="questions-error">⚠ {{ questionsError() }}</p>
+        <ul *ngIf="chunk.questions?.length; else noQuestions" class="question-list">
+          <li *ngFor="let q of chunk.questions; let i = index" class="question-item">
+            <input type="checkbox" [checked]="q.checked" (change)="toggleQuestion(chunk.id, i)">
+            <span>{{ q.text }}</span>
+          </li>
+        </ul>
+        <ng-template #noQuestions>
+          <p class="questions-hint">{{ questionsLoading() ? 'Generating…' : 'Click ↺ Generate to create questions.' }}</p>
+        </ng-template>
+      </div>
+
+      <button class="btn btn-secondary btn-block" (click)="duplicateSelected()" style="margin-top:0.5rem">
+        ⧉ Duplicate this chunk
+      </button>
+    </div>
+
+    <div *ngIf="!state.selectedChunk() && state.chunks().length" class="sidebar-section">
+      <p class="select-hint">Click a chunk in the list to zoom to it, or click a box on the canvas to select it.</p>
+    </div>
+
+  </div>
+</div>

@@ -1,0 +1,219 @@
+<!-- ── Toolbar ────────────────────────────────────────────────────────────── -->
+<div class="toolbar">
+  <div class="toolbar-left">
+    <span class="media-badge" [class.video]="state.mediaType() === 'video'">
+      {{ state.mediaType() === 'video' ? '🎞 Video' : '🎙 Audio' }}
+    </span>
+
+    <span class="file-info">
+      {{ state.mediaFileName() }}
+    </span>
+
+    <span *ngIf="state.mediaDuration() > 0" class="duration-badge">
+      {{ formatDuration(state.mediaDuration()) }} total
+    </span>
+
+    <span class="chunk-counter">
+      {{ totalChunks }} chunk{{ totalChunks !== 1 ? 's' : '' }}
+    </span>
+
+    <div class="undo-group">
+      <button class="btn btn-icon" (click)="state.undo(); cdr.markForCheck()" title="Undo (Ctrl+Z)">↩</button>
+      <button class="btn btn-icon" (click)="state.redo(); cdr.markForCheck()" title="Redo (Ctrl+Shift+Z)">↪</button>
+    </div>
+  </div>
+
+  <div class="toolbar-right">
+    <button class="btn btn-secondary" (click)="addChunk()" title="Add a new empty chunk at the end">
+      + Add Chunk
+    </button>
+
+    <button class="btn btn-outline" (click)="state.reset()" title="Go back to upload">
+      ← New File
+    </button>
+
+    <button
+      class="btn btn-success"
+      [disabled]="isExporting || !state.chunks().length"
+      (click)="exportChunks()"
+    >
+      <span *ngIf="!isExporting">⬇ Export ZIP</span>
+      <span *ngIf="isExporting" class="loading-text">
+        <span class="spinner"></span> Exporting…
+      </span>
+    </button>
+  </div>
+</div>
+
+<!-- ── Error banner ─────────────────────────────────────────────────────── -->
+<div *ngIf="exportError" class="error-banner">⚠ {{ exportError }}</div>
+
+<!-- ── Hint bar ──────────────────────────────────────────────────────────── -->
+<div class="hint-bar">
+  AI-generated transcript chunks — edit titles, types, and text below · ↑↓ to navigate · Ctrl+Z to undo
+</div>
+
+<!-- ── Body: two columns ─────────────────────────────────────────────────── -->
+<div class="editor-body">
+
+  <!-- Left: chunk list ──────────────────────────────────────────────────── -->
+  <div class="chunk-list-panel">
+    <div class="panel-header">
+      <span>Chunks</span>
+      <span class="panel-hint">Click to select · use sidebar to edit</span>
+    </div>
+
+    <div *ngIf="!state.chunks().length" class="empty-state">
+      No chunks yet. Upload a media file or click "+ Add Chunk".
+    </div>
+
+    <div class="chunk-cards">
+      <div
+        *ngFor="let chunk of state.chunks(); trackBy: trackById"
+        class="chunk-card"
+        [class.selected]="state.selectedChunkId() === chunk.id"
+        (click)="select(chunk.id)"
+      >
+        <!-- Key frame thumbnail (video only) -->
+        <img
+          *ngIf="chunk.keyFrameUrl"
+          [src]="'http://localhost:3001' + chunk.keyFrameUrl"
+          class="key-frame"
+          alt="Key frame"
+          loading="lazy"
+        />
+
+        <div class="chunk-card-body">
+          <div class="chunk-card-header">
+            <span class="ts-badge">
+              {{ formatTime(chunk.startTime) }} – {{ formatTime(chunk.endTime) }}
+            </span>
+            <span class="type-pill {{ chunk.type }}">{{ chunk.type }}</span>
+            <span class="source-dot" [class.ai]="chunk.source === 'ai'" [class.user]="chunk.source !== 'ai'"></span>
+          </div>
+
+          <div class="chunk-title">{{ chunk.title }}</div>
+
+          <div class="chunk-text-preview">{{ chunk.description | slice:0:120 }}{{ (chunk.description?.length ?? 0) > 120 ? '…' : '' }}</div>
+        </div>
+
+        <!-- Quick actions shown on hover / selection -->
+        <div class="chunk-actions" (click)="$event.stopPropagation()">
+          <button
+            class="action-btn"
+            *ngIf="canMergeWithNext(chunk.id)"
+            (click)="mergeWithNext(chunk.id, $event)"
+            title="Merge with next chunk"
+          >⬇ Merge</button>
+          <button
+            class="action-btn"
+            *ngIf="canSplit(chunk)"
+            (click)="splitChunk(chunk.id, $event)"
+            title="Split chunk in half"
+          >⊹ Split</button>
+          <button
+            class="action-btn danger"
+            (click)="deleteChunk(chunk.id, $event)"
+            title="Delete chunk"
+          >✕</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: metadata editor ──────────────────────────────────────────────── -->
+  <div class="sidebar">
+
+    <ng-container *ngIf="state.selectedChunk() as chunk">
+      <div class="sidebar-section">
+        <div class="sidebar-title">Edit Chunk</div>
+
+        <div class="field">
+          <label>Title</label>
+          <input
+            type="text"
+            [value]="chunk.title"
+            (input)="state.updateChunk(chunk.id, { title: $any($event.target).value })"
+            placeholder="Descriptive title"
+          />
+        </div>
+
+        <div class="field">
+          <label>Type</label>
+          <select
+            [value]="chunk.type"
+            (change)="state.updateChunk(chunk.id, { type: $any($event.target).value })"
+          >
+            <option *ngFor="let t of chunkTypes" [value]="t">{{ t }}</option>
+          </select>
+        </div>
+
+        <div class="ts-row field">
+          <div>
+            <label>Start (s)</label>
+            <input
+              type="number"
+              step="0.1"
+              [value]="chunk.startTime ?? 0"
+              (change)="state.updateChunk(chunk.id, { startTime: +$any($event.target).value })"
+            />
+          </div>
+          <div>
+            <label>End (s)</label>
+            <input
+              type="number"
+              step="0.1"
+              [value]="chunk.endTime ?? 0"
+              (change)="state.updateChunk(chunk.id, { endTime: +$any($event.target).value })"
+            />
+          </div>
+          <div>
+            <label>Duration</label>
+            <code class="dur-code">{{ formatTime((chunk.endTime ?? 0) - (chunk.startTime ?? 0)) }}</code>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Transcript / Content</label>
+          <textarea
+            [value]="chunk.description"
+            (input)="state.updateChunk(chunk.id, { description: $any($event.target).value })"
+            rows="10"
+            placeholder="Transcript text for this chunk"
+          ></textarea>
+        </div>
+
+        <div class="action-row">
+          <button
+            class="btn btn-secondary"
+            *ngIf="canMergeWithNext(chunk.id)"
+            (click)="mergeWithNext(chunk.id, $event)"
+          >⬇ Merge with next</button>
+          <button
+            class="btn btn-secondary"
+            *ngIf="canSplit(chunk)"
+            (click)="splitChunk(chunk.id, $event)"
+          >⊹ Split in half</button>
+        </div>
+
+        <!-- Key frame preview -->
+        <div *ngIf="chunk.keyFrameUrl" class="keyframe-preview">
+          <label>Video Key Frame</label>
+          <img [src]="'http://localhost:3001' + chunk.keyFrameUrl" alt="Key frame at {{ formatTime(chunk.startTime) }}" />
+          <small>Frame near {{ formatTime(chunk.startTime) }}</small>
+        </div>
+      </div>
+    </ng-container>
+
+    <div *ngIf="!state.selectedChunk()" class="sidebar-section">
+      <div class="empty-state" style="padding: 2rem 0.5rem;">
+        Select a chunk from the list to edit its metadata.
+        <br><br>
+        <kbd>↑</kbd> <kbd>↓</kbd> — navigate chunks<br>
+        <kbd>Ctrl+Z</kbd> — undo
+      </div>
+    </div>
+
+  </div>
+
+</div>

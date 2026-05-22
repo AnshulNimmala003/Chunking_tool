@@ -1,0 +1,45 @@
+<div class="app-shell">
+
+  <!-- Header always visible -->
+  <header class="app-header">
+    <div class="header-brand">
+      <span class="brand-icon">⬡</span>
+      <span class="brand-name">HITL Chunking</span>
+      <span class="brand-badge">RAG</span>
+    </div>
+
+    <div class="header-meta">
+      <!-- Show file/page name when in editor or transcript -->
+      <span
+        *ngIf="state.phase() !== 'upload' && headerLabel"
+        class="file-name"
+        [title]="headerLabel"
+      >
+        {{ headerLabel }}
+      </span>
+
+      <!-- Media type badge -->
+      <span *ngIf="state.mediaType() === 'audio'" class="mode-badge audio-badge">AUDIO</span>
+      <span *ngIf="state.mediaType() === 'video'" class="mode-badge video-badge">VIDEO</span>
+      <span *ngIf="state.mediaType() === 'webpage'" class="mode-badge web-badge">WEBPAGE</span>
+
+      <!-- Mock / Live badge for image/PDF/webpage -->
+      <span
+        *ngIf="state.phase() === 'editor' && isMockMode"
+        class="mode-badge mock"
+      >MOCK MODE</span>
+      <span
+        *ngIf="state.phase() === 'editor' && !isMockMode"
+        class="mode-badge live"
+      >LIVE MODE</span>
+    </div>
+  </header>
+
+  <!-- Phase router -->
+  <main class="app-main">
+    <app-upload-zone      *ngIf="state.phase() === 'upload'"></app-upload-zone>
+    <app-canvas-editor    *ngIf="state.phase() === 'editor'"></app-canvas-editor>
+    <app-transcript-editor *ngIf="state.phase() === 'transcript'"></app-transcript-editor>
+  </main>
+
+</div>

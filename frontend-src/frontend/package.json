@@ -1,0 +1,61 @@
+{
+  "name": "frontend",
+  "version": "0.0.0",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve --poll 1000",
+    "start:embedded": "ng serve --port 4201 --poll 1000",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test"
+  },
+  "private": true,
+  "browser": {
+    "jsdom": false,
+    "canvas": false,
+    "fs": false,
+    "path": false,
+    "net": false,
+    "tls": false,
+    "url": false,
+    "assert": false,
+    "http": false,
+    "https": false,
+    "crypto": false,
+    "xmldom": false
+  },
+  "dependencies": {
+    "@angular/animations": "^17.3.0",
+    "@angular/common": "^17.3.0",
+    "@angular/compiler": "^17.3.0",
+    "@angular/core": "^17.3.0",
+    "@angular/forms": "^17.3.0",
+    "@angular/platform-browser": "^17.3.0",
+    "@angular/platform-browser-dynamic": "^17.3.0",
+    "@angular/router": "^17.3.0",
+    "fabric": "^5.3.0",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0",
+    "zone.js": "~0.14.3"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-angular": "^17.3.17",
+    "@angular/cli": "^17.3.17",
+    "@angular/compiler-cli": "^17.3.0",
+    "@types/fabric": "^5.3.6",
+    "@types/jasmine": "~5.1.0",
+    "assert": "^2.1.0",
+    "browserify-url": "^0.0.1",
+    "browserify-zlib": "^0.2.0",
+    "esbuild": "^0.28.0",
+    "jasmine-core": "~5.1.0",
+    "karma": "~6.4.0",
+    "karma-chrome-launcher": "~3.2.0",
+    "karma-coverage": "~2.2.0",
+    "karma-jasmine": "~5.1.0",
+    "karma-jasmine-html-reporter": "~2.1.0",
+    "path-browserify": "^1.0.1",
+    "picomatch": "^4.0.4",
+    "typescript": "~5.4.2"
+  }
+}

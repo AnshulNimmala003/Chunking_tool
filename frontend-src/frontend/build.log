@@ -1,0 +1,31 @@
+
+> frontend@0.0.0 start
+> ng serve
+
+- Building...
+
+Initial chunk files | Names         |  Raw size
+main.js             | main          | 169.75 kB | 
+polyfills.js        | polyfills     |  88.09 kB | 
+styles.css          | styles        |   1.04 kB | 
+
+                    | Initial total | 258.88 kB
+
+Application bundle generation complete. [37.548 seconds]
+
+▲ [WARNING] NG8107: The left side of this optional chain operation does not include 'null' or 'undefined' in its type, therefore the '?.' operator can be replaced with the '.' operator. [plugin angular-compiler]
+
+    src/app/components/transcript-editor/transcript-editor.component.html:97:102:
+      97 │ ...120 }}{{ (chunk.description?.length ?? 0) > 120 ? '…' : '' }}...
+         ╵                                 ~~~~~~
+
+  Error occurs in the template of component TranscriptEditorComponent.
+
+    src/app/components/transcript-editor/transcript-editor.component.ts:14:15:
+      14 │   templateUrl: './transcript-editor.component.html',
+         ╵                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+Watch mode enabled. Watching for file changes...
+An unhandled exception occurred: Port 4200 is already in use
+See "/private/var/folders/mh/zygmbnhn1kl6t4zt7dkvnz_m0000gn/T/ng-Gsa1FC/angular-errors.log" for further details.

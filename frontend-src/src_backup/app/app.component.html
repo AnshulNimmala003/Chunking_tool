@@ -1,0 +1,24 @@
+<div class="app-shell">
+  <!-- Header always visible -->
+  <header class="app-header">
+    <div class="header-brand">
+      <span class="brand-icon">⬡</span>
+      <span class="brand-name">HITL Chunking</span>
+      <span class="brand-badge">RAG</span>
+    </div>
+    <div class="header-meta">
+      <span *ngIf="state.phase() === 'editor' && state.imageFile() as f" class="file-name">
+        {{ f.name }}
+      </span>
+      <span *ngIf="state.phase() === 'editor'" class="mode-badge" [class.mock]="true">
+        MOCK MODE
+      </span>
+    </div>
+  </header>
+
+  <!-- Route between upload and editor -->
+  <main class="app-main">
+    <app-upload-zone *ngIf="state.phase() === 'upload'"></app-upload-zone>
+    <app-canvas-editor *ngIf="state.phase() === 'editor'"></app-canvas-editor>
+  </main>
+</div>

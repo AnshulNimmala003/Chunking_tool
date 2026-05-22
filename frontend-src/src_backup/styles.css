@@ -1,0 +1,44 @@
+/* ── CSS Design Tokens ────────────────────────────────────────────────── */
+:root {
+  --accent:         #6366f1;
+  --accent-dark:    #4f46e5;
+
+  --bg-page:        #0f1117;
+  --bg-toolbar:     #161b27;
+  --bg-sidebar:     #13181f;
+  --bg-card:        #1e2433;
+  --bg-hover:       #252d3d;
+  --bg-canvas:      #0a0d12;
+
+  --text-primary:   #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted:     #64748b;
+
+  --border:         #252d3d;
+}
+
+/* ── Reset ─────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--bg-page);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ── Fabric.js canvas border reset ─────────────────────────────────────── */
+canvas { outline: none; }
