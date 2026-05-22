@@ -31,3 +31,9 @@ dist/
 build/
 backend/outputs/
 backend/uploads/
+INTEGRATION_PRESENTATION.txt
+CLAUDE.md
+CHANGES.md
+ADMIN_CONSOLE_INTEGRATION.md
+HIFI_PIPELINE.md
+/ignore
