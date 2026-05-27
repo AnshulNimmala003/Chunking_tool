@@ -47,6 +47,13 @@
   gap: 0.75rem;
 }
 
+.brand-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+  letter-spacing: 0.01em;
+}
+
 .file-name {
   font-size: 0.82rem;
   color: var(--text-muted);

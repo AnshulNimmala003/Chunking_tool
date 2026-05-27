@@ -3,7 +3,10 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "./out-tsc/app",
-    "types": []
+    "types": [],
+    "paths": {
+      "jsdom": ["./src/jsdom-stub.js"]
+    }
   },
   "files": [
     "src/main.ts"
