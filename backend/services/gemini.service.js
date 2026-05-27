@@ -237,7 +237,16 @@ async function generateQuestions(text) {
   const { GoogleGenerativeAI } = require('@google/generative-ai');
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-  const prompt = `You are a question-generation assistant. Given the following text passage, generate 3 to 4 concise questions that can be answered directly from the passage. Each question must be at most 20 words. Return ONLY valid JSON in this exact shape: { "questions": ["...", "...", "..."] }
+  const prompt = `You are an expert question-generation assistant specializing in medical and clinical communication. Given the following text passage, generate a maximum of 5 unique, highly differentiated questions that can be answered directly from the text.
+
+The questions must not be stylistic variations of each other; each should target a completely distinct clinical insight, data point, or concept within the passage.
+
+Adopt the persona of a healthcare professional (HCP) asking another peer or expert—ensure the terminology, tone, and framing are clinically appropriate, precise, and relevant to a medical context.
+
+Return ONLY valid JSON in this exact shape:
+{
+  "questions": ["...", "...", "..."]
+}
 
 Passage:
 ${text}`;
@@ -265,7 +274,7 @@ ${text}`;
       const questions = Array.isArray(parsed) ? parsed
         : Array.isArray(parsed.questions) ? parsed.questions : [];
       if (!questions.length) console.warn(`  [Gemini] ${modelName} returned no questions. Raw: ${raw.slice(0, 120)}`);
-      return questions.slice(0, 4);
+      return questions.slice(0, 5);
     } catch (err) {
       lastErr = err;
       const msg = err.message || '';
