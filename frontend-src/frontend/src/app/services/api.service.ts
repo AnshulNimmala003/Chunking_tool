@@ -124,8 +124,8 @@ export class ApiService {
   private handleError(err: any) {
     if (err instanceof HttpErrorResponse && err.status === 0) {
       return throwError(() => new Error(
-        'Cannot reach backend at http://localhost:3001. ' +
-        'Make sure the server is running: cd backend && node server.js'
+        `Cannot reach backend at ${environment.apiBaseUrl}. ` +
+        'The server may be starting up — please wait a moment and try again.'
       ));
     }
     if (err.name === 'TimeoutError') {
