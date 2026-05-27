@@ -4,8 +4,8 @@
   "description": "Human-in-the-Loop Visual Chunking Backend for RAG pipelines",
   "main": "server.js",
   "scripts": {
-    "start": "lsof -ti :3001 | xargs kill -9 2>/dev/null; sleep 0.5; node server.js",
-    "dev": "lsof -ti :3001 | xargs kill -9 2>/dev/null; sleep 0.5; nodemon server.js",
+    "start": "lsof -ti :3001 | xargs kill -9 2>/dev/null; sleep 1.5; node server.js",
+    "dev": "lsof -ti :3001 | xargs kill -9 2>/dev/null; sleep 1.5; nodemon server.js",
     "kill": "lsof -ti :3001 | xargs kill -9 2>/dev/null && echo 'Port 3001 freed'"
   },
   "dependencies": {

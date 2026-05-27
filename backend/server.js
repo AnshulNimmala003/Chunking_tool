@@ -1,19 +1,21 @@
 require('dotenv').config();
 
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
-const fs = require('fs');
+console.log('[1] dotenv OK');
 
-const analyzeRoutes      = require('./routes/analyze');
-const exportRoutes       = require('./routes/export');
-const previewRoutes      = require('./routes/preview');
-const sessionRoutes      = require('./routes/session');
-const extractTextRoutes  = require('./routes/extract-text');
-const richExtractRoutes  = require('./routes/rich-extract');
-const transcribeRoutes        = require('./routes/transcribe');
-const webpageRoutes           = require('./routes/webpage');
-const generateQuestionsRoutes = require('./routes/generate-questions');
+const express = require('express');   console.log('[2] express OK');
+const cors = require('cors');          console.log('[3] cors OK');
+const path = require('path');
+const fs = require('fs');              console.log('[4] fs/path OK');
+
+const analyzeRoutes      = require('./routes/analyze');        console.log('[5] analyze OK');
+const exportRoutes       = require('./routes/export');         console.log('[6] export OK');
+const previewRoutes      = require('./routes/preview');        console.log('[7] preview OK');
+const sessionRoutes      = require('./routes/session');        console.log('[8] session OK');
+const extractTextRoutes  = require('./routes/extract-text');   console.log('[9] extract-text OK');
+const richExtractRoutes  = require('./routes/rich-extract');   console.log('[10] rich-extract OK');
+const transcribeRoutes        = require('./routes/transcribe');       console.log('[11] transcribe OK');
+const webpageRoutes           = require('./routes/webpage');          console.log('[12] webpage OK');
+const generateQuestionsRoutes = require('./routes/generate-questions'); console.log('[13] generate-questions OK');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -25,7 +27,7 @@ const PORT = process.env.PORT || 3001;
 });
 
 app.use(cors({
-  origin: 'http://localhost:4200',
+  origin: process.env.FRONTEND_URL || 'http://localhost:4200',
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
@@ -55,8 +57,18 @@ app.get('/health', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   const isMock = process.env.MOCK_GEMINI?.trim().toLowerCase() !== 'false';
   console.log(`\nHITL Chunking Backend → http://localhost:${PORT}`);
-  console.log(`Gemini mode: ${isMock ? '🟡 MOCK' : '🟢 LIVE'}\n`);
+  console.log(`Gemini mode: ${isMock ? 'MOCK' : 'LIVE'}\n`);
+});
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`\nERROR: Port ${PORT} is already in use.`);
+    console.error(`Run this to free it:  lsof -ti :${PORT} | xargs kill -9\n`);
+  } else {
+    console.error('\nServer error:', err.message);
+  }
+  process.exit(1);
 });

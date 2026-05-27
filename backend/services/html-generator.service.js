@@ -49,7 +49,19 @@ function dataAttrs(chunk) {
 function generateHtml(chunk) {
   const { title, text } = chunk;
   const safeTitle = escapeHtml(title || 'Untitled');
-  const body = (text || '').split('\n').map(renderLine).join('<br>\n    ');
+
+  // Split on blank lines to detect paragraph breaks; within each paragraph
+  // individual lines are joined with <br> to preserve the original line structure.
+  const rawText = text || '';
+  const paragraphs = rawText.split(/\n\n+/);
+  const body = paragraphs
+    .map(para => {
+      if (!para.trim()) return '';
+      const lines = para.split('\n').map(renderLine).join('<br>\n    ');
+      return `  <p style="margin:0 0 4px;" ${dataAttrs(chunk)}>${lines}</p>`;
+    })
+    .filter(Boolean)
+    .join('\n');
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -57,16 +69,9 @@ function generateHtml(chunk) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${safeTitle}</title>
-  <style>
-    body { font-family: inherit; margin: 1rem; }
-    section { white-space: pre-wrap; }
-  </style>
 </head>
 <body>
-  <section
-    ${dataAttrs(chunk)}>
-    ${body}
-  </section>
+${body}
 </body>
 </html>
 `;

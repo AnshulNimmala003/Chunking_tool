@@ -273,7 +273,8 @@ def _build_semantic_html(page, clip):
 
     def _flush_para():
         if para_html:
-            html_parts.append("<p>" + " ".join(para_html) + "</p>")
+            joined = "<br>".join(line for line in para_html if line)
+            html_parts.append(f'<p style="margin:0 0 4px;">{joined}</p>')
             plain_parts.append(" ".join(para_plain))
             para_html.clear()
             para_plain.clear()
@@ -312,7 +313,7 @@ def _build_semantic_html(page, clip):
             lh, lp, _ = _line_to_html_plain(lines[0])
             if lp:
                 _flush_para()
-                html_parts.append(f"<h3>{lh}</h3>")
+                html_parts.append(f'<h3 style="font-weight:bold;margin:0 0 2px;">{lh}</h3>')
                 plain_parts.append(lp)
             body_start = 1
 
@@ -323,19 +324,18 @@ def _build_semantic_html(page, clip):
             avg_size = sum(sizes) / len(sizes) if sizes else 0
             if avg_size > _HEADING_SIZE_THRESHOLD:
                 _flush_para()
-                html_parts.append(f"<h2>{lh}</h2>")
+                html_parts.append(f'<h2 style="font-weight:bold;margin:0 0 2px;">{lh}</h2>')
                 plain_parts.append(lp)
             else:
                 para_html.append(lh)
                 para_plain.append(lp)
-                _flush_para()  # one <p> per visual line — preserves PDF line structure
-        _flush_para()
+        _flush_para()  # one <p> per PDF block (paragraph), lines joined with <br>
 
-    inner    = "\n      ".join(html_parts)
+    inner    = "\n".join(html_parts)
     fragment = (
-        f'<div class="pdf-chunk-wrapper">\n'
-        f'      {inner}\n'
-        f'   </div>'
+        f'<div>\n'
+        f'{inner}\n'
+        f'</div>'
     )
     return fragment, "\n".join(plain_parts)
 
@@ -348,12 +348,6 @@ def _extract_chunk_html(doc, page, W, H, nx1, ny1, nx2, ny2):
     get_text("dict") with link-annotation, HTML-oracle, flag, and drawing-
     segment style detection.
 
-    Comparison panel:
-      Left  — <!-- CHUNK_SCREENSHOT_PLACEHOLDER --> replaced by Node.js with
-               the canvas screenshot of the original PDF chunk.
-      Right — the same generated semantic HTML fragment, rendered directly in
-               the browser so the user can compare its appearance against the
-               canvas screenshot on the left.
 
     Returns:
         html          : str   — full HTML document
@@ -378,49 +372,9 @@ def _extract_chunk_html(doc, page, W, H, nx1, ny1, nx2, ny2):
         '<html lang="en">\n'
         '<head>\n'
         '<meta charset="UTF-8">\n'
-        '<style>\n'
-        'body{margin:0;padding:8px;background:#fff;font-family:sans-serif;}\n'
-        '.pdf-chunk-wrapper{'
-        'font-family:"Times New Roman",Times,serif;font-size:10pt;line-height:1.35;}\n'
-        '.pdf-chunk-wrapper h2,.pdf-chunk-wrapper h3{'
-        'font-family:"Times New Roman",Times,serif;font-size:10pt;'
-        'font-weight:bold;margin:0 0 2px;display:block;}\n'
-        '.pdf-chunk-wrapper p{margin:0 0 4px;}\n'
-        '/* ── comparison panel ── */\n'
-        '#compare{display:none;margin-top:12px;border-top:1px solid #ccc;padding-top:8px;}\n'
-        '#compare.open{display:flex;gap:16px;align-items:flex-start;}\n'
-        '#compare .col{flex:1;min-width:0;}\n'
-        '#compare > .col > h3{'
-        'margin:0 0 6px;font-size:12px;color:#555;font-family:sans-serif;'
-        'font-weight:normal;text-transform:uppercase;letter-spacing:.05em;}\n'
-        '#compare .html-preview{'
-        'border:1px solid #ddd;padding:8px;background:#fff;overflow:auto;}\n'
-        '#toggle-btn{'
-        'margin-top:6px;padding:4px 10px;font-size:11px;cursor:pointer;'
-        'border:1px solid #aaa;border-radius:3px;background:#f5f5f5;}\n'
-        '</style>\n'
         '</head>\n'
         '<body>\n'
         f'{semantic_fragment}\n'
-        '\n'
-        '<button id="toggle-btn" onclick="'
-        'var p=document.getElementById(\'compare\');'
-        'p.classList.toggle(\'open\');'
-        'this.textContent=p.classList.contains(\'open\')?\'Hide comparison\':\'Compare\';">'
-        'Compare\n'
-        '</button>\n'
-        '<div id="compare">\n'
-        '  <div class="col">\n'
-        '    <h3>Canvas screenshot</h3>\n'
-        '    <!-- CHUNK_SCREENSHOT_PLACEHOLDER -->\n'
-        '  </div>\n'
-        '  <div class="col">\n'
-        '    <h3>Generated HTML</h3>\n'
-        '    <div class="html-preview">\n'
-        f'      {semantic_fragment}\n'
-        '    </div>\n'
-        '  </div>\n'
-        '</div>\n'
         '</body>\n'
         '</html>\n'
     )

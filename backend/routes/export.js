@@ -86,14 +86,7 @@ router.post('/', async (req, res) => {
       location_in_page: chunk.locationInPage  || null,
       bounding_box:     chunk.box,
     };
-    let richHtml = richMap.get(chunk.id);
-    const SCREENSHOT_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
-    if (richHtml && chunk.screenshot && typeof chunk.screenshot === 'string'
-        && SCREENSHOT_RE.test(chunk.screenshot)) {
-      const safeScreenshot = chunk.screenshot.replace(/"/g, '&quot;');
-      const imgTag = `<img src="${safeScreenshot}" style="max-width:100%;border:1px solid #ddd;" alt="Canvas screenshot">`;
-      richHtml = richHtml.replace('<!-- CHUNK_SCREENSHOT_PLACEHOLDER -->', imgTag);
-    }
+    const richHtml = richMap.get(chunk.id);
     const htmlContent = richHtml || generateHtml(chunkMeta);
     writeOps.push(fs.promises.writeFile(path.join(outputDir, htmlName), htmlContent, 'utf8'));
 
@@ -168,8 +161,12 @@ router.post('/', async (req, res) => {
   archive.glob('*.jpeg', { cwd: outputDir });
   archive.file(metaPath, { name: 'metadata.json' });
 
-  res.on('finish', () => {
-    fs.rm(outputDir, { recursive: true, force: true }, () => {});
+  res.on('close', () => {
+    setTimeout(() => {
+      fs.rm(outputDir, { recursive: true, force: true }, (err) => {
+        if (err) console.error(`[export] Cleanup failed for ${outputDir}:`, err.message);
+      });
+    }, 2000);
   });
 
   archive.finalize();

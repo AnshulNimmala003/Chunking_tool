@@ -1,0 +1,20 @@
+{
+  "chunks": [
+    {
+      "id": "user_1779805930538",
+      "title": "Box 1",
+      "filename": "box-1",
+      "type": "unknown",
+      "pageNumber": 1,
+      "paragraphNumber": 2,
+      "locationInPage": "middle-center",
+      "box": [
+        0.3218518331270615,
+        0.44064576329331046,
+        0.464300367345698,
+        0.5811603430531732
+      ],
+      "description": "6.1 Clinical Trial Experience\nBecause clinical trials are conducted under widely varying conditions, adverse reaction rates\nobserved in the clinical trials of a drug cannot be directly compared to rates in the clinical trials\nof another drug and may not reflect the rates observed in clinical practice."
+    }
+  ]
+}
