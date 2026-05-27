@@ -6,6 +6,7 @@ import { UploadZoneComponent }      from './components/upload-zone/upload-zone.c
 import { CanvasEditorComponent }    from './components/canvas-editor/canvas-editor.component';
 import { TranscriptEditorComponent } from './components/transcript-editor/transcript-editor.component';
 import { ChunkStateService }        from './services/chunk-state.service';
+import { environment } from '../environments/environment';
 
 @Component({
   selector: 'app-root',
@@ -21,7 +22,7 @@ export class AppComponent implements OnInit {
   isMockMode = true;
 
   ngOnInit() {
-    this.http.get<{ status: string; mockMode: boolean }>('http://localhost:3001/health').subscribe({
+    this.http.get<{ status: string; mockMode: boolean }>(`${environment.apiBaseUrl}/health`).subscribe({
       next:  (res) => { this.isMockMode = res.mockMode; },
       error: ()    => { this.isMockMode = true; }
     });

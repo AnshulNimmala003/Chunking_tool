@@ -77,7 +77,7 @@
         <!-- Key frame thumbnail (video only) -->
         <img
           *ngIf="chunk.keyFrameUrl"
-          [src]="'http://localhost:3001' + chunk.keyFrameUrl"
+          [src]="apiBaseUrl + chunk.keyFrameUrl"
           class="key-frame"
           alt="Key frame"
           loading="lazy"
@@ -199,7 +199,7 @@
         <!-- Key frame preview -->
         <div *ngIf="chunk.keyFrameUrl" class="keyframe-preview">
           <label>Video Key Frame</label>
-          <img [src]="'http://localhost:3001' + chunk.keyFrameUrl" alt="Key frame at {{ formatTime(chunk.startTime) }}" />
+          <img [src]="apiBaseUrl + chunk.keyFrameUrl" alt="Key frame at {{ formatTime(chunk.startTime) }}" />
           <small>Frame near {{ formatTime(chunk.startTime) }}</small>
         </div>
       </div>

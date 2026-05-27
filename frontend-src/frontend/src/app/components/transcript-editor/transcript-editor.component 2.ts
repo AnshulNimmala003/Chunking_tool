@@ -6,6 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { ChunkStateService } from '../../services/chunk-state.service';
 import { ApiService } from '../../services/api.service';
 import { Chunk } from '../../models/chunk.model';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-transcript-editor',
@@ -19,6 +20,7 @@ export class TranscriptEditorComponent {
   state = inject(ChunkStateService);
   private api  = inject(ApiService);
   cdr  = inject(ChangeDetectorRef);
+  readonly apiBaseUrl = environment.apiBaseUrl;
 
   exportError = '';
   isExporting = false;

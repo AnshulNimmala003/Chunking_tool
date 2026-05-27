@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ChunkStateService } from '../../services/chunk-state.service';
 import { ApiService } from '../../services/api.service';
+import { environment } from '../../../environments/environment';
 
 type Tab = 'document' | 'media' | 'webpage';
 
@@ -106,12 +107,12 @@ export class UploadZoneComponent {
           this.state.pdfPath.set(res.pdfPath ?? null);
           this.state.pdfPages.set(pages.map((p: any) => ({
             page: p.page,
-            imageUrl: `http://localhost:3001${p.imageUrl}`,
+            imageUrl: `${environment.apiBaseUrl}${p.imageUrl}`,
             imagePath: p.imagePath
           })));
           this.state.currentPage.set(1);
           this.state.imagePath.set(res.imagePath);
-          this.state.imageUrl.set(`http://localhost:3001${res.imageUrl}`);
+          this.state.imageUrl.set(`${environment.apiBaseUrl}${res.imageUrl}`);
         },
         error: (err) => {
           this.isProcessing = false;
@@ -162,7 +163,7 @@ export class UploadZoneComponent {
           res.sessionId,
           res.imagePath,
           res.boxes,
-          `http://localhost:3001${res.imageUrl}`,
+          `${environment.apiBaseUrl}${res.imageUrl}`,
           res.pageTitle,
           res.sourceUrl
         );
