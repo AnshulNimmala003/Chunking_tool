@@ -253,7 +253,13 @@
             <span class="location-val">{{ chunk.pageNumber }}</span>
           </div>
           <div class="location-item" *ngIf="chunk.paragraphNumber">
-            <span class="location-key">Paragraph</span>
+            <span class="location-key">
+              Paragraph
+              <span
+                class="para-help"
+                title="The {{ chunk.paragraphNumber }}{{ paragraphSuffix(chunk.paragraphNumber) }} text block from the top of this column on the page. Text blocks are separated by visible gaps between lines."
+              >?</span>
+            </span>
             <span class="location-val">{{ chunk.paragraphNumber }}</span>
           </div>
           <div class="location-item" *ngIf="chunk.locationInPage">

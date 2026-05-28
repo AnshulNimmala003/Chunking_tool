@@ -35,6 +35,13 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
   private syncingFromCanvas = false;
   private imageReady = false;
 
+  paragraphSuffix(n: number): string {
+    if (n === 1) return 'st';
+    if (n === 2) return 'nd';
+    if (n === 3) return 'rd';
+    return 'th';
+  }
+
   // Image natural size — logical canvas space has image at scale=1
   private imageNaturalSize = { w: 0, h: 0 };
 
@@ -524,10 +531,14 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
 
       this.syncingFromCanvas = true;
       const normalized = this.rectToNormalized(rect);
+      const [mx1, my1, mx2, my2] = normalized;
+      const mcx = (mx1 + mx2) / 2, mcy = (my1 + my2) / 2;
+      const movedLocation = `${mcy < 0.33 ? 'top' : mcy < 0.67 ? 'middle' : 'bottom'}-${mcx < 0.33 ? 'left' : mcx < 0.67 ? 'center' : 'right'}`;
       this.ngZone.run(() => {
         this.state.pushHistory();
-        this.state.updateChunk(chunkId, { box: normalized, source: 'user' });
+        this.state.updateChunk(chunkId, { box: normalized, source: 'user', locationInPage: movedLocation });
         this.generateThumbnail(chunkId);
+        this.extractTextForChunk(chunkId);
         this.cdr.markForCheck();
       });
       Promise.resolve().then(() => { this.syncingFromCanvas = false; });

@@ -37,3 +37,5 @@ CHANGES.md
 ADMIN_CONSOLE_INTEGRATION.md
 HIFI_PIPELINE.md
 /ignore
+.vercel
+.env*

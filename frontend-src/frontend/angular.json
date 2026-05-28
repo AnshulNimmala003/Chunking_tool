@@ -53,7 +53,9 @@
               "src/styles.css"
             ],
             "scripts": [],
-            "externalDependencies": ["jsdom"]
+            "externalDependencies": [
+              "jsdom"
+            ]
           },
           "configurations": {
             "production": {

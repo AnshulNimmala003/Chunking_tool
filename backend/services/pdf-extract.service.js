@@ -275,24 +275,34 @@ function pdfPathFromImagePath(imageFilename) {
  * Build a list of paragraph y-centers (normalized 0-1, top-left origin) for a full page.
  * Uses the same line-grouping and paragraph-gap logic as extractTextFromRegion.
  */
-async function getParagraphCenters(pdfAbsPath, pageNum) {
+async function getParagraphCenters(pdfAbsPath, pageNum, xMin, xMax) {
   const data = new Uint8Array(await fs.promises.readFile(pdfAbsPath));
   const pdf  = await getPdfjsLib().getDocument({ data, useSystemFonts: true, disableFontFace: true }).promise;
 
-  let H, tcItems;
+  let W, H, tcItems;
   try {
     const page = await pdf.getPage(pageNum);
-    H       = page.getViewport({ scale: 1 }).height;
+    const vp   = page.getViewport({ scale: 1 });
+    W = vp.width; H = vp.height;
     const tc = await page.getTextContent();
     tcItems  = tc.items;
   } finally {
     await pdf.destroy();
   }
 
+  // Column filter: only include text items whose x-center falls within the
+  // chunk's horizontal range (±10% page-width tolerance for ragged text).
+  const tolerance = W * 0.10;
+  const xMinPt = xMin * W - tolerance;
+  const xMaxPt = xMax * W + tolerance;
+
   const items = [];
   for (const item of tcItems) {
     if (!item.str?.trim()) continue;
-    const [, , , scaleY, , ty] = item.transform;
+    const [scaleX, , , scaleY, tx, ty] = item.transform;
+    const itemW  = Math.abs(scaleX) * (item.width || 1);
+    const itemCx = tx + itemW / 2;
+    if (itemCx < xMinPt || itemCx > xMaxPt) continue;
     items.push({ ty, fontH: Math.abs(scaleY) || 10 });
   }
   if (!items.length) return [];
@@ -335,7 +345,9 @@ async function getParagraphCenters(pdfAbsPath, pageNum) {
   // Convert to normalized y-center (top-left origin: normalizedY = 1 - ty/H)
   return paragraphs.map((p, i) => ({
     index:   i + 1,
-    yCenter: 1 - ((p.topTy + p.bottomTy) / 2) / H
+    yCenter: 1 - ((p.topTy + p.bottomTy) / 2) / H,
+    yTop:    1 - p.topTy  / H,
+    yBottom: 1 - p.bottomTy / H
   }));
 }
 
@@ -347,13 +359,13 @@ async function getParagraphCenters(pdfAbsPath, pageNum) {
  * location_in_page — coarse 3×3 grid label, e.g. "top-left", "middle-center".
  */
 async function enrichBoxesWithLocation(boxes, pageNum, pdfAbsPath) {
-  let paragraphs = [];
-  if (pdfAbsPath) {
-    try { paragraphs = await getParagraphCenters(pdfAbsPath, pageNum); } catch {}
-  }
-
-  return boxes.map(box => {
+  return Promise.all(boxes.map(async box => {
     const [x1, y1, x2, y2] = box.box;
+    let paragraphs = [];
+    if (pdfAbsPath) {
+      try { paragraphs = await getParagraphCenters(pdfAbsPath, pageNum, x1, x2); } catch {}
+    }
+
     const cx = (x1 + x2) / 2;
     const cy = (y1 + y2) / 2;
     const vZone = cy < 0.33 ? 'top'    : cy < 0.67 ? 'middle' : 'bottom';
@@ -361,15 +373,25 @@ async function enrichBoxesWithLocation(boxes, pageNum, pdfAbsPath) {
 
     let paragraph_number = null;
     if (paragraphs.length) {
+      // Find paragraph with greatest vertical overlap with the chunk box.
+      // Falls back to nearest-center if no paragraph overlaps at all.
+      let bestOverlap = 0;
       let minDist = Infinity;
       for (const p of paragraphs) {
+        const overlapTop    = Math.max(y1, Math.min(p.yTop, p.yBottom));
+        const overlapBottom = Math.min(y2, Math.max(p.yTop, p.yBottom));
+        const overlap = Math.max(0, overlapBottom - overlapTop);
+        if (overlap > bestOverlap) {
+          bestOverlap = overlap;
+          paragraph_number = p.index;
+        }
         const d = Math.abs(cy - p.yCenter);
-        if (d < minDist) { minDist = d; paragraph_number = p.index; }
+        if (overlap === 0 && d < minDist) { minDist = d; paragraph_number = p.index; }
       }
     }
 
     return { ...box, page_number: pageNum, paragraph_number, location_in_page: `${vZone}-${hZone}` };
-  });
+  }));
 }
 
 module.exports = { extractTextFromRegion, pageHasTextLayer, pdfPathFromImagePath, enrichBoxesWithLocation };
